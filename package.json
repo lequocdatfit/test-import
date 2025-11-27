@@ -1,0 +1,21 @@
+{
+  "name": "import-csv",
+  "type": "module",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./import.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google-cloud/storage": "^7.17.3",
+    "csv-generate": "^4.5.0",
+    "csv-parse": "^6.1.0",
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "pg-copy-streams": "^7.0.0"
+  }
+}
