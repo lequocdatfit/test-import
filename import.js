@@ -15,11 +15,18 @@ const run = async (jobId, filePath) => {
   const blob = bucket.file(filePath).createReadStream();
 
   const client = new PG.Client({
+    host: process.env.HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DATABASE,
+    password: process.env.PASSWORD,
+    user: process.env.USER,
   });
+
+  console.log('user', process.env.USER);
 
   await client.connect();
 
-  const copyStream = client.query(copyFrom(`COPY task (id, summary, description) from STDIN WITH (FORMAT CSV)`));
+  const copyStream = client.query(copyFrom(`COPY temp_task (id, summary, description) from STDIN WITH (FORMAT CSV)`));
 
   try {     
     await pipeline(blob, copyStream);
