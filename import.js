@@ -9,18 +9,12 @@ app.use(express.json());
 
 const port = 8080;
 
-console.log('port', port)
-
 const run = async (jobId, filePath) => {
   const storage = new Storage();
   const bucket = storage.bucket('taskford-bucket-local');
   const blob = bucket.file(filePath).createReadStream();
 
   const client = new PG.Client({
-    user: "postgres",
-    host: "localhost",
-    database: "postgres",
-    port: 5532,
   });
 
   await client.connect();
@@ -43,7 +37,12 @@ app.get("/health", (req, res) => {
 });
 
 app.post('/', (req, res) => {
-  const { jobId, filePath } = req.body;
+  // message from pub/sub
+  console.log('req.body', JSON.stringify(req.body))
+  const data = JSON.parse(Buffer.from(req.body.message.data, "base64").toString())
+  const { jobId, filePath } = data;
+  console.log('jobId', jobId, "path", filePath);
+  
   run(jobId, filePath);
   res.send(200);
 })
