@@ -10,16 +10,6 @@ app.use(express.json());
 
 const port = 8080;
 
-const pgClient = new PG.Client({
-  host: process.env.HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DATABASE,
-  password: process.env.PASSWORD,
-  user: process.env.USER,
-});
-
-await pgClient.connect();
-
 const redisClient = createClient({
   url: process.env.REDIS_URL
 });
@@ -31,12 +21,25 @@ const run = async (jobId, filePath) => {
   const storage = new Storage();
   const bucket = storage.bucket('taskford-bucket-local');
   const blob = bucket.file(filePath).createReadStream();
+
+  const pgClient = new PG.Client({
+    host: process.env.HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DATABASE,
+    password: process.env.PASSWORD,
+    user: process.env.USER,
+  });
+
+  await pgClient.connect();
+
   const copyStream = pgClient.query(copyFrom(`COPY temp_task (id, summary, description) from STDIN WITH (FORMAT CSV)`));
 
   try {     
     await pipeline(blob, copyStream);
     console.log("done");
-    await redisClient.publish(jobId, "done")
+    await redisClient.publish(`import-task:progress:${jobId}`, JSON.stringify({
+      status: "completed"
+    }));
   } catch (err) {
     console.error(err);
   } 
