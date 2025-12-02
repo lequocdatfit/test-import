@@ -3,39 +3,46 @@ import express from 'express';
 import PG from "pg";
 import { from as copyFrom } from "pg-copy-streams";
 import { pipeline } from "stream/promises";
+import { createClient } from "redis"
 
 const app = express();
 app.use(express.json());
 
 const port = 8080;
 
+const pgClient = new PG.Client({
+  host: process.env.HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DATABASE,
+  password: process.env.PASSWORD,
+  user: process.env.USER,
+});
+
+await pgClient.connect();
+
+const redisClient = createClient({
+  url: process.env.REDIS_URL
+});
+
+await redisClient.connect();
+
+
 const run = async (jobId, filePath) => {
   const storage = new Storage();
   const bucket = storage.bucket('taskford-bucket-local');
   const blob = bucket.file(filePath).createReadStream();
-
-  const client = new PG.Client({
-    host: process.env.HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DATABASE,
-    password: process.env.PASSWORD,
-    user: process.env.USER,
-  });
-
-  console.log('user', process.env.USER);
-
-  await client.connect();
-
-  const copyStream = client.query(copyFrom(`COPY temp_task (id, summary, description) from STDIN WITH (FORMAT CSV)`));
+  const copyStream = pgClient.query(copyFrom(`COPY temp_task (id, summary, description) from STDIN WITH (FORMAT CSV)`));
 
   try {     
     await pipeline(blob, copyStream);
+    console.log("done");
+    await redisClient.publish(jobId, "done")
   } catch (err) {
     console.error(err);
   } 
   finally {
     copyStream.end();
-    client.end();
+    pgClient.end();
   }
 }
 
